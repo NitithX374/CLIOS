@@ -1,0 +1,61 @@
+User
+  │
+  ▼
+chat.py
+  ├─ Topology Mode → network_sim / cli_engine
+  │                     │
+  │                     ▼
+  │                network_state
+  │                     │
+  │                     ▼
+  │              export topology
+  │
+  └─ Ask Mode → RAG retriever → LLM
+                     ▲
+                     │
+                topology context
+
+
+
+        CLI
+         │
+         ▼
+   Network State
+         │
+         ▼
+  Topology Exporter
+         │
+         ▼
+      RAG
+         │
+         ▼
+   Prompt Builder
+         │
+         ▼
+        LLM
+         │
+         ▼
+    Network Reasoner
+
+
+
+
+
+
+    chat.py
+ │
+ │ user question
+ ▼
+retrieve()     ← RAG
+ │
+ ▼
+topology export
+ │
+ ▼
+prompt builder
+ │
+ ▼
+Typhoon LLM
+ │
+ ▼
+answer
