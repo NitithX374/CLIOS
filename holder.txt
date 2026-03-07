@@ -59,3 +59,15 @@ Typhoon LLM
  │
  ▼
 answer
+------------------------------------------------------------
+ CLI command
+     ↓
+chat.py → allow command
+     ↓
+cli_engine.py → execute logic
+     ↓
+network_state updated
+     ↓
+export_topology()
+     ↓
+LLM reasoning

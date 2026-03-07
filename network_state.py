@@ -4,7 +4,7 @@ class Interface:
         self.name = name
         self.ip = None
         self.link = None
-
+        self.area = None
 
 class Router:
 

@@ -6,8 +6,51 @@ from llm_engine import call_typhoon
 mode = "topology"
 DEBUG_RAG = False
 
+def print_banner():
+
+    print("""
+   _____ _      _____  ____   _____
+  / ____| |    |_   _|/ __ \\ / ____|
+ | |    | |      | | | |  | | (___
+ | |    | |      | | | |  | |\\___ \\
+ | |____| |____ _| |_| |__| |____) |
+  \\_____|______|_____|_____/|_____/
+
+C.L.I.O.S. - AI Powered CLI-based OSPF Simulator
+""")
+
+    print("Welcome to C.L.I.O.S. (AI-Powered CLI-based OSPF Simulator)")
+    print("-----------------------------------------------------------")
+    print("Modes:")
+    print("  ask       - Ask AI about OSPF behavior")
+    print("  topology  - Build and configure network topology")
+    print("")
+    print("Usage:")
+    print("  type 'mode topology' to start building a network")
+    print("  type 'mode ask' to ask AI questions")
+    print("")
+    print("Tips:")
+    print("  In topology mode, type '?' to see available commands")
+    print("  type 'q' to exit")
+    print("")
+
+def is_question(text):
+
+    text = text.lower().strip()
+
+    question_words = [
+        "what", "why", "how", "when", "where",
+        "explain", "describe", "does", "do",
+        "can", "is", "are"
+    ]
+
+    if "?" in text:
+        return True
+
+    return any(text.startswith(w) for w in question_words)
+
 def is_cli_command(text):
-    cli_keywords = ["show", "config", "router", "interface", "?", "ip", "connect", "ospf"]
+    cli_keywords = ["show", "config", "router", "interface", "?", "ip", "connect", "ospf", "area"]
     return any(text.strip().startswith(k) for k in cli_keywords)
 
 
@@ -19,10 +62,18 @@ def export_topology():
 
         output += f"\nRouter: {r_name}\n"
 
-        if router.ospf_enabled:
-            output += "OSPF: enabled\n"
+        # Detect ABR
+        areas = set()
+        for intf in router.interfaces.values():
+            if intf.area:
+                areas.add(intf.area)
+
+        if router.ospf_enabled and len(areas) > 1:
+            output += "Role: ABR\n"
+        elif router.ospf_enabled:
+            output += "Role: Internal Router\n"
         else:
-            output += "OSPF: disabled\n"
+            output += "Role: OSPF Disabled\n"
 
         for intf in router.interfaces.values():
 
@@ -30,6 +81,9 @@ def export_topology():
 
             if intf.ip:
                 output += f"IP: {intf.ip}\n"
+
+            if intf.area:
+                output += f"Area: {intf.area}\n"
 
             if intf.link:
                 output += f"Link: {intf.link}\n"
@@ -40,7 +94,7 @@ def export_topology():
 
 
 if __name__ == "__main__":
-
+    print_banner()
     while True:
 
         query = input(f"[{mode}]# ")
@@ -81,6 +135,9 @@ if __name__ == "__main__":
         # =====================
 
         elif mode == "ask":
+            if not is_question(query):
+                print("🙂 You're welcome!")
+                continue
 
             topology = export_topology()
 
