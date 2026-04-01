@@ -12,12 +12,14 @@ class Router:
         self.name = name
         self.interfaces = {}
         self.ospf_enabled = False
+        self.external_domain = None
 
 
 class Network:
 
     def __init__(self):
         self.routers = {}
+        self.area_types = {}
 
     def add_router(self, name):
 

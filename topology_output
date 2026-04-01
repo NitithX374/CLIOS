@@ -1,0 +1,12 @@
+// Network Topology
+graph {
+	rankdir=LR
+	R1 [label="R1
+(OSPF)" fillcolor=lightblue shape=box style=filled]
+	R2 [label="R2
+(OSPF)" fillcolor=lightblue shape=box style=filled]
+	R3 [label="R3
+(OSPF)" fillcolor=lightblue shape=box style=filled]
+	R1 -- R2 [label="S0/0 -- S0/0"]
+	R2 -- R3 [label="S1/1 -- S1/1"]
+}

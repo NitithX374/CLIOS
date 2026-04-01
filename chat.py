@@ -16,10 +16,10 @@ def print_banner():
  | |____| |____ _| |_| |__| |____) |
   \\_____|______|_____|_____/|_____/
 
-C.L.I.O.S. - AI Powered CLI-based OSPF Simulator
+C.L.I.O.S. - CLI-based OSPF Simulator
 """)
 
-    print("Welcome to C.L.I.O.S. (AI-Powered CLI-based OSPF Simulator)")
+    print("Welcome to C.L.I.O.S. (CLI-based OSPF Simulator)")
     print("-----------------------------------------------------------")
     print("Modes:")
     print("  ask       - Ask AI about OSPF behavior")
@@ -41,7 +41,7 @@ def is_question(text):
     question_words = [
         "what", "why", "how", "when", "where",
         "explain", "describe", "does", "do",
-        "can", "is", "are"
+        "can", "is", "are" , "if", "tell"
     ]
 
     if "?" in text:
@@ -50,30 +50,46 @@ def is_question(text):
     return any(text.startswith(w) for w in question_words)
 
 def is_cli_command(text):
-    cli_keywords = ["show", "config", "router", "interface", "?", "ip", "connect", "ospf", "area"]
+    cli_keywords = ["show", "config", "router", "interface", "?", "ip", "connect", "ospf", "area", "external", "no", "areatype"]
     return any(text.strip().startswith(k) for k in cli_keywords)
 
 
 def export_topology():
 
     output = "NETWORK TOPOLOGY\n"
+    
+    if network.area_types:
+        output += "\nArea Configurations:\n"
+        for aid, atype in network.area_types.items():
+            output += f"- Area {aid}: {atype}\n"
 
     for r_name, router in network.routers.items():
 
-        output += f"\nRouter: {r_name}\n"
-
-        # Detect ABR
-        areas = set()
-        for intf in router.interfaces.values():
-            if intf.area:
-                areas.add(intf.area)
-
-        if router.ospf_enabled and len(areas) > 1:
-            output += "Role: ABR\n"
-        elif router.ospf_enabled:
-            output += "Role: Internal Router\n"
+        if router.external_domain:
+            output += f"\nRouter: {r_name}\n"
+            output += f"Role: External Domain ({router.external_domain})\n"
         else:
-            output += "Role: OSPF Disabled\n"
+            output += f"\nRouter: {r_name}\n"
+
+            # Detect roles
+            areas = set()
+            is_asbr = False
+            for intf in router.interfaces.values():
+                if intf.area:
+                    areas.add(intf.area)
+                if intf.link:
+                    peer_r, _ = intf.link.split(":")
+                    if network.routers[peer_r].external_domain:
+                        is_asbr = True
+
+            roles = []
+            if router.ospf_enabled:
+                if len(areas) > 1: roles.append("ABR")
+                if is_asbr: roles.append("ASBR")
+                if not roles: roles.append("Internal Router")
+                output += f"Role: {' & '.join(roles)}\n"
+            else:
+                output += "Role: OSPF Disabled\n"
 
         for intf in router.interfaces.values():
 

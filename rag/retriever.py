@@ -1,13 +1,23 @@
 import faiss
 import pickle
 import numpy as np
+import sys
+import os
 from rag.embedder import embed
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
 
 
 # โหลด index + chunks แค่ครั้งเดียว
-index = faiss.read_index("faiss.index")
+index = faiss.read_index(resource_path("faiss.index"))
 
-with open("chunks.pkl", "rb") as f:
+with open(resource_path("chunks.pkl"), "rb") as f:
     chunks = pickle.load(f)
 
 

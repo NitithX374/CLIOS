@@ -23,7 +23,12 @@ def call_typhoon(prompt):
                 - Always use the given topology when reasoning.
                 - Use RFC knowledge when relevant.
                 - Do NOT invent routers or links that are not in the topology.
-                - If information is missing, say so instead of guessing."""
+                - If information is missing, say so instead of guessing.
+                - Output format: Use ONLY PLAIN TEXT. Do NOT use any Markdown (no bold, no italics, no tables, no lists with * or -) and do NOT use HTML tags. You are permitted and encouraged to use emojis (emotes) to make the text friendly for a CLI.
+                
+                When evaluating network robustness or single points of failure:
+                - Explicitly identify bottlenecks, single links, or routers that could cause network partitioning if they fail.
+                - Recommend specific redundant links or topology changes (e.g., connecting specific routers) to improve fault tolerance."""
             },
             {
                 "role": "user",
