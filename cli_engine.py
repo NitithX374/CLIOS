@@ -47,7 +47,7 @@ def _draw_topology(net):
                     drawn_links.add(link_key)
                     
     try:
-        dot.render('topology_output', view=True)
+        dot.render('output/topology_output', view=True)
     except Exception as e:
         print(f"\n[Warning] Could not render Graphviz topology: {e}")
 

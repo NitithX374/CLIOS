@@ -1,0 +1,6 @@
+openai
+graphviz
+faiss-cpu
+numpy
+requests
+python-dotenv
