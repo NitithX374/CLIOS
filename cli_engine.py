@@ -1,6 +1,7 @@
 import graphviz
 import os
 from network_state import network
+from ospf_engine import format_lsdb, format_routing_table
 
 def _draw_topology(net):
     dot = graphviz.Graph(comment='Network Topology', format='png')
@@ -66,12 +67,15 @@ router <name>
 no router <name>
 interface <router> <name>
 ip address <router> <intf> <ip/subnet>
+cost <router> <intf> <value>
 connect <r1> <i1> <r2> <i2>
 ospf enable <router>
 area <router> <interface> <area_id>
 areatype <id> <stub|totally-stub|nssa|normal>
 external <router> <domain>
 show topology
+show ip route <router>
+show ip ospf database
 """
 
     if tokens[0] == "router":
@@ -106,6 +110,16 @@ show topology
         ip = tokens[4]
         network.set_ip(router, intf, ip)
         return f"{router} {intf} IP set to {ip}"
+
+    if tokens[0] == "cost":
+        if len(tokens) < 4: return "Usage: cost <router> <intf> <value>"
+        router = tokens[1]
+        intf = tokens[2]
+        value = tokens[3]
+        error = network.set_cost(router, intf, value)
+        if error:
+            return error
+        return f"{router} {intf} OSPF cost set to {value}"
 
     if tokens[0] == "connect":
         if len(tokens) < 5: return "Usage: connect <r1> <i1> <r2> <i2>"
@@ -199,8 +213,16 @@ show topology
         return f"Area {area} configured on {router} {intf}" + warning
 
     # =========================
-    # SHOW TOPOLOGY
+    # SHOW COMMANDS
     # =========================
+
+    if tokens[0] == "show" and tokens[1] == "ip" and len(tokens) >= 3:
+        if tokens[2] == "route" and len(tokens) == 4:
+            router = tokens[3]
+            return format_routing_table(network, router)
+            
+        if tokens[2] == "ospf" and len(tokens) >= 4 and tokens[3] == "database":
+            return format_lsdb(network)
 
     if tokens[0] == "show" and tokens[1] == "topology":
 
