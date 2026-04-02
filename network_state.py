@@ -5,6 +5,7 @@ class Interface:
         self.ip = None
         self.link = None
         self.area = None
+        self.cost = 10
 
 class Router:
 
@@ -49,6 +50,23 @@ class Network:
             return "Interface not found"
 
         intf.ip = ip
+
+    def set_cost(self, router_name, intf_name, cost):
+
+        router = self.routers.get(router_name)
+
+        if not router:
+            return "Router not found"
+
+        intf = router.interfaces.get(intf_name)
+
+        if not intf:
+            return "Interface not found"
+
+        try:
+            intf.cost = int(cost)
+        except ValueError:
+            return "Cost must be an integer"
 
     def connect(self, r1, i1, r2, i2):
 

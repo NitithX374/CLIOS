@@ -5,20 +5,5 @@ graph {
 (OSPF)" fillcolor=lightblue shape=box style=filled]
 	R2 [label="R2
 (OSPF)" fillcolor=lightblue shape=box style=filled]
-	R3 [label="R3
-(OSPF)" fillcolor=lightblue shape=box style=filled]
-	R4 [label="R4
-(OSPF)" fillcolor=lightblue shape=box style=filled]
-	R5 [label="R5
-(OSPF)" fillcolor=lightblue shape=box style=filled]
-	R1 -- R2 [label="S0/0 -- S0/0
-(Area 0 normal)"]
-	R1 -- R3 [label="S1/0 -- S0/0
-(Area 0 normal)"]
-	R2 -- R4 [label="S1/0 -- S0/0
-(Area 0 normal)"]
-	R3 -- R5 [label="S1/0 -- S0/0
-(Area 0 normal)"]
-	R4 -- R5 [label="S1/0 -- S1/0
-(Area 0 normal)"]
+	R1 -- R2 [label="S0/0 -- S0/0"]
 }
