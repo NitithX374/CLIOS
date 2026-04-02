@@ -1,0 +1,27 @@
+env_CLIOS/
+
+.env
+
+__pycache__*
+*.py[cod]
+*$py.class
+*.pyo
+
+# FAISS index & embeddings data
+faiss.index
+chunks.pkl
+
+# Graphviz output
+topology*
+output*
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
