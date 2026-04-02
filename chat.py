@@ -151,7 +151,7 @@ if __name__ == "__main__":
                     continue
 
                 topology = export_topology()
-                results = retrieve(query, top_k=3)
+                results = retrieve(query, top_k=8)
 
                 print("\nTopology Context")
                 print("================")
@@ -165,6 +165,13 @@ if __name__ == "__main__":
                     if DEBUG_RAG:
                         print(r["text"])
                         print("-"*40)
+                    
+                    meta = r.get("metadata", {})
+                    proto = meta.get("protocol", "Unknown")
+                    section = meta.get("section", "")
+                    title = meta.get("title", "")
+                    
+                    rag_text += f"[Source: {proto} RFC, Section: {section} - {title}]\n"
                     rag_text += r["text"] + "\n\n"
 
                 prompt = f"""
