@@ -40,3 +40,50 @@ def call_typhoon(prompt):
     )
 
     return response.choices[0].message.content
+
+def call_typhoon_agent(prompt):
+
+    client = OpenAI(
+        api_key=os.getenv("TYPHOON_API_KEY"),
+        base_url="https://api.opentyphoon.ai/v1"
+    )
+
+    system_prompt = """You are an AI network assistant. Ensure to translate the user's natural language request into a sequence of topology CLI commands.
+Available commands:
+router <name>
+no router <name>
+interface <router> <name>
+ip address <router> <intf> <ip/subnet>
+connect <r1> <i1> <r2> <i2>
+ospf enable <router>
+area <router> <interface> <area_id>
+areatype <id> <stub|totally-stub|nssa|normal>
+external <router> <domain>
+
+Rules:
+- Give ONE command per line.
+- DO NOT use markdown blocks like ``` or ```bash.
+- DO NOT provide explanations, ONLY the CLI commands.
+- Assume basic IP addressing (e.g., 10.0.0.1/24) if not specified.
+- Automatically construct interfaces (e.g., e0, e1) and connect them as requested.
+- If OSPF is requested on a router, use 'ospf enable <router>' and assign the correct 'area <router> <intf> <area_id>'.
+- For area types, use stub, totally-stub, nssa, or normal.
+"""
+
+    response = client.chat.completions.create(
+        model="typhoon-v2.5-30b-a3b-instruct",
+        messages=[
+            {
+                "role": "system",
+                "content": system_prompt
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        temperature=0.1,
+        max_tokens=2000
+    )
+
+    return response.choices[0].message.content

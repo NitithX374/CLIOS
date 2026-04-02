@@ -1,7 +1,7 @@
 from rag.retriever import retrieve
 from cli_engine import process_command
 from network_state import network
-from llm_engine import call_typhoon
+from llm_engine import call_typhoon, call_typhoon_agent
 
 mode = "topology"
 DEBUG_RAG = False
@@ -24,10 +24,12 @@ C.L.I.O.S. - CLI-based OSPF Simulator
     print("Modes:")
     print("  ask       - Ask AI about OSPF behavior")
     print("  topology  - Build and configure network topology")
+    print("  agent     - Build topology using AI based on natural language")
     print("")
     print("Usage:")
     print("  type 'mode topology' to start building a network")
     print("  type 'mode ask' to ask AI questions")
+    print("  type 'mode agent' to prompt the AI to build a topology")
     print("")
     print("Tips:")
     print("  In topology mode, type '?' to see available commands")
@@ -132,6 +134,11 @@ if __name__ == "__main__":
             print("Entered LLM query mode")
             continue
 
+        if query == "mode agent":
+            mode = "agent"
+            print("Entered AI Agent mode")
+            continue
+
         # =====================
         # TOPOLOGY MODE
         # =====================
@@ -197,3 +204,22 @@ Explain the answer using the topology and the reference knowledge.
             print("\nLLM Answer")
             print("================")
             print(answer)
+
+        # =====================
+        # AGENT MODE
+        # =====================
+
+        elif mode == "agent":
+            print("Calling AI Agent to generate commands...\n")
+            commands_str = call_typhoon_agent(query)
+            # Remove any possible markdown artifacts just in case
+            commands_str = commands_str.replace("```bash", "").replace("```", "").strip()
+            commands = [cmd.strip() for cmd in commands_str.split("\n") if cmd.strip()]
+            
+            print("Executing commands:")
+            for cmd in commands:
+                print(f"> {cmd}")
+                output = process_command(cmd)
+                if output:
+                    print(output)
+            print("Agent execution complete.\n")
