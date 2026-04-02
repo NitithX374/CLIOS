@@ -7,3 +7,4 @@ python-dotenv
 pymupdf
 scikit-learn
 sentence-transformers
+rank_bm25

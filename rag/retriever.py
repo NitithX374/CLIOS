@@ -3,8 +3,9 @@ import pickle
 import numpy as np
 import sys
 import os
+from rank_bm25 import BM25Okapi
 
-from rag.embedder import embed
+from rag.embedder import embed, cross_score
 import rag.classifier as classifier
 
 def resource_path(relative_path):
@@ -15,23 +16,33 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 _loaded_metadata = {}
-_loaded_sec_indexes = {}
+_loaded_chunk_indexes = {}
+_loaded_bm25 = {}
 
 def get_protocol_data(proto):
     global _loaded_metadata
-    global _loaded_sec_indexes
+    global _loaded_chunk_indexes
+    global _loaded_bm25
+    
     if proto not in _loaded_metadata:
         meta_path = resource_path(f"rag/metadata_{proto}.pkl")
-        sec_idx_path = resource_path(f"rag/faiss_{proto}_sections.index")
+        chunk_idx_path = resource_path(f"rag/faiss_{proto}_chunks.index")
         
-        if not os.path.exists(meta_path) or not os.path.exists(sec_idx_path):
-            return None, None
+        if not os.path.exists(meta_path) or not os.path.exists(chunk_idx_path):
+            return None, None, None
             
         with open(meta_path, "rb") as f:
             _loaded_metadata[proto] = pickle.load(f)
-        _loaded_sec_indexes[proto] = faiss.read_index(sec_idx_path)
+            
+        _loaded_chunk_indexes[proto] = faiss.read_index(chunk_idx_path)
         
-    return _loaded_metadata[proto], _loaded_sec_indexes[proto]
+        # Initialize BM25 dynamically into RAM
+        corpus = [chunk["text"] for chunk in _loaded_metadata[proto]["chunks"]]
+        tokenized_corpus = [doc.lower().split() for doc in corpus]
+        _loaded_bm25[proto] = BM25Okapi(tokenized_corpus)
+        
+    return _loaded_metadata[proto], _loaded_chunk_indexes[proto], _loaded_bm25[proto]
+
 
 def get_available_protocols():
     protos = []
@@ -42,45 +53,51 @@ def get_available_protocols():
             protos.append(f.replace("metadata_", "").replace(".pkl", ""))
     return protos
 
-def retrieve_from_protocol(proto, query_vec, top_k_sec=3, top_k_chunk=5):
-    meta, sec_index = get_protocol_data(proto)
-    if not meta or not sec_index:
+
+def retrieve_from_protocol(proto, query, query_vec, top_k_candidates=15):
+    meta, chunk_index, bm25 = get_protocol_data(proto)
+    if not meta or not chunk_index or not bm25:
         return []
         
-    # Stage 1: Retrieve top-k relevant sections
-    distances, indices = sec_index.search(query_vec, top_k_sec)
+    chunks = meta["chunks"]
+    if not chunks:
+        return []
+
+    # 1. Dense Semantic Retrieval (FAISS)
+    k_search = min(20, len(chunks))
+    distances, indices = chunk_index.search(query_vec, k_search)
+    faiss_ranks = {idx: rank for rank, idx in enumerate(indices[0]) if idx != -1}
     
-    candidate_chunks = []
+    # 2. Sparse Keyword Retrieval (BM25)
+    tokenized_query = query.lower().split()
+    bm25_scores = bm25.get_scores(tokenized_query)
+    bm25_indices = np.argsort(bm25_scores)[::-1][:k_search]
+    bm25_ranks = {idx: rank for rank, idx in enumerate(bm25_indices) if bm25_scores[idx] > 0}
     
-    for i, idx in enumerate(indices[0]):
-        if idx == -1: continue # FAISS returning -1 means not enough results
+    # 3. Mathematical Reciprocal Rank Fusion (RRF)
+    all_indices = set(faiss_ranks.keys()).union(set(bm25_ranks.keys()))
+    rrf_scores = []
+    for idx in all_indices:
+        f_rank = faiss_ranks.get(idx, 1000)
+        b_rank = bm25_ranks.get(idx, 1000)
+        rrf_score = (1.0 / (f_rank + 60)) + (1.0 / (b_rank + 60))
+        rrf_scores.append((rrf_score, idx))
         
-        sec_obj = meta["sections"][idx]
-        
-        # Stage 2: Retrieve chunks within those sections
-        for chunk in sec_obj["chunk_records"]:
-            candidate_chunks.append(chunk)
-            
-    if not candidate_chunks:
+    rrf_scores.sort(key=lambda x: x[0], reverse=True)
+    top_candidates_idx = [x[1] for x in rrf_scores[:top_k_candidates]]
+    
+    candidates = [chunks[idx] for idx in top_candidates_idx]
+    if not candidates:
         return []
         
-    # Re-rank chunks using cosine similarity against query
-    q_vec_1d = query_vec[0]
+    # 4. Deep Neural Reranking via Cross-Encoder
+    candidate_texts = [c["text"] for c in candidates]
+    ce_scores = cross_score(query, candidate_texts)
     
-    scored_chunks = []
-    for chunk in candidate_chunks:
-        chunk_vec = np.array(chunk["embedding"], dtype="float32")
-        
-        # calculate cosine similarity
-        v1_norm = np.linalg.norm(q_vec_1d)
-        v2_norm = np.linalg.norm(chunk_vec)
-        if v1_norm == 0 or v2_norm == 0:
-            sim = 0
-        else:
-            sim = np.dot(q_vec_1d, chunk_vec) / (v1_norm * v2_norm)
-        
-        scored_chunks.append({
-            "score": float(sim),
+    results = []
+    for chunk, ce_score in zip(candidates, ce_scores):
+        results.append({
+            "score": float(ce_score),
             "text": chunk["text"],
             "metadata": {
                 "protocol": chunk.get("protocol", proto),
@@ -90,32 +107,31 @@ def retrieve_from_protocol(proto, query_vec, top_k_sec=3, top_k_chunk=5):
             }
         })
         
-    # Sort and return top-n chunks
-    scored_chunks.sort(key=lambda x: x["score"], reverse=True)
-    return scored_chunks[:top_k_chunk]
+    # Sort by true semantic relevance cross-score (logits)
+    results.sort(key=lambda x: x["score"], reverse=True)
+    return results
 
 
-def retrieve(query, top_k=5):
+def retrieve(query, top_k=8):
     candidates, confidence = classifier.classify_query(query)
     
     query_vec = np.array(embed(query), dtype="float32").reshape(1, -1)
     
     results = []
     
-    # Threshold for fallback is 0.4. If keyword matched, confidence is 1.0.
     if confidence >= 0.4 and candidates:
-        # High confidence -> Query only the specific protocol(s)
         for proto in candidates:
-            proto_results = retrieve_from_protocol(proto, query_vec, top_k_sec=3, top_k_chunk=top_k)
+            # Over-retrieve candidates per active protocol, then we rerank across them
+            proto_results = retrieve_from_protocol(proto, query, query_vec, top_k_candidates=12)
             results.extend(proto_results)
     else:
-        # Low confidence -> Fallback strategy: query all and merge
         all_protos = get_available_protocols()
         for proto in all_protos:
-            proto_results = retrieve_from_protocol(proto, query_vec, top_k_sec=1, top_k_chunk=2)
+            # Panic fallback mode, slim context retrieval
+            proto_results = retrieve_from_protocol(proto, query, query_vec, top_k_candidates=3)
             results.extend(proto_results)
             
-    # Final global rerank/sort across protocols if necessary
+    # Final global rerank combining all protocol logits
     results.sort(key=lambda x: x["score"], reverse=True)
     
     return results[:top_k]
