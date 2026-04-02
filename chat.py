@@ -3,7 +3,7 @@ from cli_engine import process_command
 from network_state import network
 from llm_engine import call_typhoon, call_typhoon_agent
 
-mode = "topology"
+
 DEBUG_RAG = False
 
 def print_banner():
@@ -27,13 +27,13 @@ C.L.I.O.S. - CLI-based OSPF Simulator
     print("  agent     - Build topology using AI based on natural language")
     print("")
     print("Usage:")
-    print("  type 'mode topology' to start building a network")
-    print("  type 'mode ask' to ask AI questions")
-    print("  type 'mode agent' to prompt the AI to build a topology")
+    print("  type 'topology' to start building a network")
+    print("  type 'ask' to ask AI questions")
+    print("  type 'agent' to prompt the AI to build a topology")
     print("")
     print("Tips:")
     print("  In topology mode, type '?' to see available commands")
-    print("  type 'q' to exit")
+    print("  type 'q' to exit back to mode selection (or quit)")
     print("")
 
 def is_question(text):
@@ -115,75 +115,59 @@ if __name__ == "__main__":
     print_banner()
     while True:
 
-        query = input(f"[{mode}]# ")
+        mode = input("Enter Mode (topology / ask / agent / q): ").strip()
 
-        if query == "q":
+        if mode == "q":
             break
-
-        # =====================
-        # SWITCH MODE
-        # =====================
-
-        if query == "mode topology":
-            mode = "topology"
-            print("Entered topology build mode")
-            continue
-
-        if query == "mode ask":
-            mode = "ask"
-            print("Entered LLM query mode")
-            continue
-
-        if query == "mode agent":
-            mode = "agent"
-            print("Entered AI Agent mode")
-            continue
 
         # =====================
         # TOPOLOGY MODE
         # =====================
 
         if mode == "topology":
-
-            if is_cli_command(query):
-
-                output = process_command(query)
-                print(output)
-
-            else:
-                print("Invalid topology command")
+            print("Entered topology build mode")
+            while True:
+                query = input(f"[{mode}]# ")
+                if query == "q":
+                    break
+                if is_cli_command(query):
+                    output = process_command(query)
+                    print(output)
+                else:
+                    print("Invalid topology command")
 
         # =====================
         # ASK MODE
         # =====================
 
         elif mode == "ask":
-            if not is_question(query):
-                print("🙂 You're welcome!")
-                continue
+            print("Entered LLM query mode")
+            while True:
+                query = input(f"[{mode}]# ")
+                if query == "q":
+                    break
+                if not is_question(query):
+                    print("Invalid LLM query")
+                    continue
 
-            topology = export_topology()
+                topology = export_topology()
+                results = retrieve(query, top_k=3)
 
-            results = retrieve(query, top_k=3)
+                print("\nTopology Context")
+                print("================")
+                print(topology)
 
-            print("\nTopology Context")
-            print("================")
-            print(topology)
-
-            # print("\nRAG Results")
-            # print("================")
-
-            rag_text = ""
-            if DEBUG_RAG:
-                print(results)
-                print("-"*40)
-            for r in results:
+                rag_text = ""
                 if DEBUG_RAG:
-                    print(r["text"])
+                    print(results)
                     print("-"*40)
-                rag_text += r["text"] + "\n\n"
+                for r in results:
+                    if DEBUG_RAG:
+                        print(r["text"])
+                        print("-"*40)
+                    rag_text += r["text"] + "\n\n"
 
-            prompt = f"""
+                prompt = f"""
 Network Topology
 ================
 {topology}
@@ -199,27 +183,34 @@ Question
 Explain the answer using the topology and the reference knowledge.
 """
 
-            answer = call_typhoon(prompt)
+                answer = call_typhoon(prompt)
 
-            print("\nLLM Answer")
-            print("================")
-            print(answer)
+                print("\nLLM Answer")
+                print("================")
+                print(answer)
 
         # =====================
         # AGENT MODE
         # =====================
 
         elif mode == "agent":
-            print("Calling AI Agent to generate commands...\n")
-            commands_str = call_typhoon_agent(query)
-            # Remove any possible markdown artifacts just in case
-            commands_str = commands_str.replace("```bash", "").replace("```", "").strip()
-            commands = [cmd.strip() for cmd in commands_str.split("\n") if cmd.strip()]
-            
-            print("Executing commands:")
-            for cmd in commands:
-                print(f"> {cmd}")
-                output = process_command(cmd)
-                if output:
-                    print(output)
-            print("Agent execution complete.\n")
+            print("Entered AI Agent mode")
+            while True:
+                query = input(f"[{mode}]# ")
+                if query == "q":
+                    break
+                print("Calling AI Agent to generate commands...\n")
+                commands_str = call_typhoon_agent(query)
+                commands_str = commands_str.replace("```bash", "").replace("```", "").strip()
+                commands = [cmd.strip() for cmd in commands_str.split("\n") if cmd.strip()]
+
+                print("Executing commands:")
+                for cmd in commands:
+                    print(f"> {cmd}")
+                    output = process_command(cmd)
+                    if output:
+                        print(output)
+                print("Agent execution complete.\n")
+
+        else:
+            print("Invalid mode. Choose: topology, ask, or agent")
