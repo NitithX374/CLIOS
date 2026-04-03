@@ -6,8 +6,8 @@ import faiss
 import numpy as np
 from embedder import embed
 
-RFC_DIR = "../RFC_Doc"
-OUTPUT_DIR = "."
+RFC_DIR = "../data/rfc"
+OUTPUT_DIR = "../data/rag_indices"
 
 PROTOCOL_MAP = {
     "1349": "TCP", # IP/TCP

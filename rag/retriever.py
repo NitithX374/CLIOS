@@ -25,8 +25,8 @@ def get_protocol_data(proto):
     global _loaded_bm25
     
     if proto not in _loaded_metadata:
-        meta_path = resource_path(f"rag/metadata_{proto}.pkl")
-        chunk_idx_path = resource_path(f"rag/faiss_{proto}_chunks.index")
+        meta_path = resource_path(f"data/rag_indices/metadata_{proto}.pkl")
+        chunk_idx_path = resource_path(f"data/rag_indices/faiss_{proto}_chunks.index")
         
         if not os.path.exists(meta_path) or not os.path.exists(chunk_idx_path):
             return None, None, None
@@ -46,7 +46,7 @@ def get_protocol_data(proto):
 
 def get_available_protocols():
     protos = []
-    rag_dir = resource_path("rag")
+    rag_dir = resource_path("data/rag_indices")
     if not os.path.exists(rag_dir): return protos
     for f in os.listdir(rag_dir):
         if f.startswith("metadata_") and f.endswith(".pkl"):

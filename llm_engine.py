@@ -70,7 +70,7 @@ Rules:
 - Give ONE command per line.
 - DO NOT use markdown blocks like ``` or ```bash.
 - DO NOT provide explanations, ONLY the CLI commands.
-- Assume basic IP addressing (e.g., 10.0.0.1/24) if not specified.
+- Assume basic IP addressing (e.g., 192.168.1.0/24) if not specified.
 - Automatically construct interfaces (e.g., e0, e1) and connect them as requested.
 - If OSPF is requested on a router, use 'ospf enable <router>' and assign the correct 'area <router> <intf> <area_id>'.
 - For area types, use stub, totally-stub, nssa, or normal.
